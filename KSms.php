@@ -2,13 +2,42 @@
 
 /**
  * KSms
- * @author HanamLe (jellysandwich)
+ * @author Hanam Le
+ * @link https://github.com/jellysandwich
  */
 class KSms {
 
     /**
+     * Transport for mailing
+     * Valid choices: "php" or "smtp"
+     * @var string
+     */
+    public $transportType = "smtp";
+
+    /**
+     * Transport options, for swift mailer transport
+     * @var array
+     */
+    public $transportOptions = array(
+        "host"       => "smtp.gmail.com",
+        "username"   => "xxx@gmail.com", // or email@googleappsdomain.com
+        "password"   => "yyy",
+        "port"       => "465",
+        "encryption" => "ssl",
+    );
+
+    /**
      * Variable to separate prefix and suffix in the carriers email address
-     * The suffix is typically the domain
+     * Format:
+     *      {prefix}{number}{suffix}
+     * You'll need to search online to get the proper email addresses
+     * The prefix is for the rare weird ones, like the "+48" in this:
+     *      Polkomtel       Poland      +48number@text.plusgsm.pl
+     * Would be:
+     *      "Polkomtel" => "+48//text.plusgsm.pl",
+     * @link http://en.wikipedia.org/wiki/List_of_SMS_gateways
+     * @link http://www.tech-recipes.com/rx/939/sms_email_cingular_nextel_sprint_tmobile_verizon_virgin/
+     * @link http://www.tech-recipes.com/rx/2819/sms_email_us_cellular_suncom_powertel_att_alltel/
      * @var string
      */
     public $prefixSuffixSeparator = "//";
@@ -20,14 +49,18 @@ class KSms {
      */
     public $splitLength = 150;
 
+
+    // --------------------------------- end configuration -------------------------------- //
+
+    /**
+     * Swiftmailer object
+     * @var Swift_Mailer
+     */
+    protected $_mailer;
+
     /**
      * Get list of carriers (Check wikipedia for a more complete list)
      * Use $this->prefixSuffixSeparator if needed, though typically you won't need it
-     *      {prefix}{number}{suffix}
-     * You'll need to search online to get the proper email addresses
-     * @link http://en.wikipedia.org/wiki/List_of_SMS_gateways
-     * @link http://www.tech-recipes.com/rx/939/sms_email_cingular_nextel_sprint_tmobile_verizon_virgin/
-     * @link http://www.tech-recipes.com/rx/2819/sms_email_us_cellular_suncom_powertel_att_alltel/
      * @return array
      */
     public function getCarriers() {
@@ -35,12 +68,14 @@ class KSms {
             "AT&T" => "txt.att.net",
             "Boost Mobile" => "myboostmobile.com",
             "Cingular" => "cingularme.com",
-            "Metro PCS" => "MyMetroPcs.com",
+            "Metro PCS" => "mymetropcs.com",
             "Nextel" => "messaging.nextel.com",
             "Sprint" => "messaging.sprintpcs.com",
             "T-Mobile" => "tmomail.net",
             "Verizon" => "vtext.com",
             "Virgin Mobile" => "vmobl.com",
+
+            "Polkomtel" => "+48//text.plusgsm.pl", // example of prefix suffix separator
         );
     }
 
@@ -95,15 +130,33 @@ class KSms {
      */
     protected function _mail($to, $subject, $message) {
 
-        // set up transport and mailer
-        require_once dirname(__FILE__) . "/swift/swift_required.php";
-        $transport = Swift_SmtpTransport::newInstance("smtp.gmail.com", 465)
-            ->setUsername("xxx@gmail.com")
-            ->setPassword("yyy")
-            ->setEncryption("ssl");
-        $mailer = Swift_Mailer::newInstance($transport);
+        // set up swiftmailer if needed
+        if (!$this->_mailer) {
 
-        // set up message
+            // include swiftmailer
+            require_once dirname(__FILE__) . "/swift/swift_required.php";
+
+            // set transport to php
+            if (strtolower($this->transportType) == "php") {
+                $transport = Swift_MailTransport::newInstance();
+            }
+            // set transport to smtp
+            elseif (strtolower($this->transportType) == "smtp") {
+                $transport = Swift_SmtpTransport::newInstance();
+
+                // set options by calling method calls, ie setHost()
+                foreach ($this->transportOptions as $option => $value) {
+                    $methodName = "set" . ucfirst($option);
+                    $transport->$methodName($value);
+                }
+            }
+
+            // create mailer object
+            $this->_mailer = Swift_Mailer::newInstance($transport);
+        }
+
+        // set up message and send
+        $mailer = $this->_mailer;
         $message = Swift_Message::newInstance($subject)
             ->setFrom("not@used.com") // used only because of swiftmailer
             ->setTo($to)

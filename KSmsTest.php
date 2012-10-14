@@ -14,7 +14,7 @@ class KSmsTest extends PHPUnit_Framework_TestCase{
      *
      */
     public static function setUpBeforeClass() {
-        require_once dirname(__FILE__) . "/../KSms.php";
+        require_once dirname(__FILE__) . "/KSms.php";
     }
 
     /**
