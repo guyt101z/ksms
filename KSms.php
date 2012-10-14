@@ -43,8 +43,12 @@ class KSms {
     public $prefixSuffixSeparator = "//";
 
     /**
-     * Split length. This is to handle sms limits (which is 160 characters)
-     * Be sure to leave some padding so we can add in a counter
+     * Split length. This is to handle sms limits, which is 160 characters
+     * (Be sure to leave some padding so we can add in a counter)
+     *
+     * Note: Depending on the type of phone the user has, you may not need to split messages
+     *      In fact, the split is disabled by default
+     *      Better yet, just keep the damn text message short
      * @var int
      */
     public $splitLength = 150;
@@ -80,7 +84,7 @@ class KSms {
     }
 
     /**
-     * Sends sms
+     * Sends text message
      * @param string $carrier
      * @param string $phoneNumber
      * @param string $subject
